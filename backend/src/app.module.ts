@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -10,8 +12,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       username: 'root',
       password: '',
       database: 'movies_db',
-      synchronize: true, // solo para desarrollo
+      synchronize: true, 
+      autoLoadEntities: true, // Cargar automáticamente las entidades
     }),
+    UsersModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
