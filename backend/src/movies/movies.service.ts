@@ -63,39 +63,61 @@ export class MoviesService {
             throw new BadRequestException(`Error searching for movies`);
         }
     }
-    async getMovieDetails(imdbID: string): Promise<Movie> {
-        const apiKey = this.configService.get<string>('OMDB_API_KEY');
-        const url = this.configService.get<string>('OMDB_API_URL');
-        if (!apiKey || !url) {
-            throw new BadRequestException('OMDB API key or URL is not configured');
-        }
+   async getMovieDetails(imdbID: string): Promise<Partial<Movie>> {
+  const apiKey = this.configService.get<string>('OMDB_API_KEY');
+  const url = this.configService.get<string>('OMDB_API_URL');
+  if (!apiKey || !url) {
+    throw new BadRequestException('OMDB API key or URL is not configured');
+  }
 
-        // Define the OMDB API response type for movie details
-        interface OmdbMovieDetailResponse extends Partial<Movie> {
-            Response: string;
-            Error?: string;
-        }
-
-        try {
-            const response = await firstValueFrom(
-                this.httpService.get<OmdbMovieDetailResponse>(url, {
-                    params: {
-                        apikey: apiKey,
-                        i: imdbID,
-                    },
-                })
-            );
-            if (response.data.Response === 'False') {
-                throw new NotFoundException(`Movie not found: ${response.data.Error}`);
-            }
-            return response.data as Movie;
-        } catch (error) {
-            if (error instanceof NotFoundException) {
-                throw error;
-            }
-            throw new BadRequestException(`Error fetching movie details`);
-        }
+  try {
+    interface OmdbApiResponse {
+      Response: string;
+      Error?: string;
+      imdbID?: string;
+      Title?: string;
+      Year?: string;
+      Type?: string;
+      Genre?: string;
+      Director?: string;
+      Actors?: string;
+      Plot?: string;
+      Poster?: string;
+      Runtime?: string;
     }
+
+    const response = await firstValueFrom(
+      this.httpService.get<OmdbApiResponse>(url, {
+        params: {
+          apikey: apiKey,
+          i: imdbID,
+        },
+      })
+    );
+
+    if (response.data.Response === 'False') {
+      throw new NotFoundException(`Movie not found: ${response.data.Error}`);
+    }
+
+    const data = response.data;
+
+    return {
+      imdbID: data.imdbID,
+      title: data.Title,
+      year: data.Year,
+      type: data.Type || 'movie',
+      genre: data.Genre,
+      director: data.Director,
+      actors: data.Actors,
+      plot: data.Plot,
+      poster: data.Poster,
+      runtime: data.Runtime,
+    };
+  } catch {
+    throw new BadRequestException('Error fetching movie details from OMDb');
+  }
+}
+
     async addFavoriteMovie(imdbID: string, userId: number): Promise<Movie> {
         const existingMovie = await this.moviesRepository.findOne({ where: { imdbID, userId } });
         if (existingMovie) {
